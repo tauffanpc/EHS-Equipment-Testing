@@ -6,9 +6,9 @@ import { Profile } from '../types';
 import { Users, CheckCircle2, XCircle, Trash2, Search, Clock, ShieldCheck } from 'lucide-react';
 
 const useIsMobile = () => {
-  const [v, setV] = useState(window.innerWidth < 1024);
-  useEffect(() => { const fn = () => setV(window.innerWidth < 1024); window.addEventListener('resize', fn); return () => window.removeEventListener('resize', fn); }, []);
-  return v;
+  const [isMob, setIsMob] = useState(window.innerWidth < 1024);
+  useEffect(() => { const fn = () => setIsMob(window.innerWidth < 1024); window.addEventListener('resize', fn); return () => window.removeEventListener('resize', fn); }, []);
+  return isMob;
 };
 
 export const AdminDashboard: React.FC = () => {
