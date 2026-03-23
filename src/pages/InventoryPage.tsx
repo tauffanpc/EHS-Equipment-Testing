@@ -9,9 +9,9 @@ import * as XLSX from 'xlsx';
 type FilterStatus = 'all' | 'active' | 'warning' | 'expired' | 'unknown';
 
 const useIsMobile = () => {
-  const [v, setV] = useState(window.innerWidth < 1024);
-  useEffect(() => { const fn = () => setV(window.innerWidth < 1024); window.addEventListener('resize', fn); return () => window.removeEventListener('resize', fn); }, []);
-  return v;
+  const [isMob, setIsMob] = useState(window.innerWidth < 1024);
+  useEffect(() => { const fn = () => setIsMob(window.innerWidth < 1024); window.addEventListener('resize', fn); return () => window.removeEventListener('resize', fn); }, []);
+  return isMob;
 };
 
 export const InventoryPage: React.FC = () => {
@@ -32,7 +32,7 @@ export const InventoryPage: React.FC = () => {
   }, []);
 
   const categories = useMemo(() => ['all', ...Array.from(new Set(equipments.map(e => e.category)))], [equipments]);
-  const departments = useMemo(() => ['all', ...Array.from(new Set(equipments.map(e => e.department).filter(Boolean)))], [equipments]);
+  const departments = useMemo(() => ['all', ...Array.from(new Set(equipments.map(e => e.department).filter((d): d is string => Boolean(d))))], [equipments]);
 
   const filtered = useMemo(() => equipments.filter(e => {
     const s = getRiksaUjiStatus(e.nextInspectionDate);
