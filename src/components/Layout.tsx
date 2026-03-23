@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import {
-  LayoutDashboard, ClipboardList, PlusCircle,
-  ShieldCheck, LogOut, QrCode, Menu, X, ChevronRight
+  LayoutDashboard, ClipboardList, PlusCircle, ShieldCheck,
+  LogOut, QrCode, Menu, X, ChevronRight, Settings
 } from 'lucide-react';
 
 interface LayoutProps { children: React.ReactNode; }
 
-const menuItems = [
+const navItems = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Inventory', path: '/inventory', icon: ClipboardList },
   { name: 'Registrasi', path: '/register-equipment', icon: PlusCircle },
@@ -18,138 +18,144 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const allMenuItems = user?.role === 'superadmin'
-    ? [...menuItems, { name: 'Admin', path: '/admin', icon: ShieldCheck }]
-    : menuItems;
+  const allNav = user?.role === 'superadmin'
+    ? [...navItems, { name: 'Admin', path: '/admin', icon: ShieldCheck }]
+    : navItems;
 
   const isActive = (path: string) => location.pathname === path;
+  const initials = user?.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U';
 
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
-  };
-
-  const initials = user?.fullName
-    ? user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'U';
+  const handleLogout = async () => { await signOut(); navigate('/login'); };
 
   return (
-    <div className="flex min-h-screen bg-[#F4F6F9]">
+    <div className="flex min-h-screen" style={{ background: 'var(--surface-2)' }}>
 
-      {/* ── SIDEBAR (PC only) ── */}
+      {/* ── PC SIDEBAR ── */}
       <aside className="sidebar hidden lg:flex">
-        {/* Logo */}
-        <div className="px-6 py-6 border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <QrCode size={18} className="text-white" />
+        {/* Brand */}
+        <div style={{ padding: '20px 16px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 4 }}>
+            <div style={{
+              width: 28, height: 28, background: 'var(--accent)', borderRadius: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>
+              <QrCode size={15} color="#fff" />
             </div>
             <div>
-              <p className="text-white font-bold text-sm leading-none">EHS Equipment</p>
-              <p className="text-blue-400 text-[10px] font-semibold tracking-widest uppercase mt-0.5">Testing System</p>
+              <p style={{ color: '#fff', fontWeight: 600, fontSize: 13, lineHeight: 1 }}>EHS Equipment</p>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, marginTop: 2, letterSpacing: '0.04em' }}>Testing System</p>
             </div>
           </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          <p className="label-xs text-white/20 px-3 mb-3">Menu Utama</p>
-          {allMenuItems.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
-            >
-              <item.icon size={18} />
-              {item.name}
-              {isActive(item.path) && (
-                <ChevronRight size={14} className="ml-auto text-blue-400" />
-              )}
-            </Link>
-          ))}
-        </nav>
+        {/* Nav Section */}
+        <div style={{ padding: '4px 12px', flex: 1 }}>
+          <p style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '8px 12px 6px' }}>
+            Menu
+          </p>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {allNav.map(item => (
+              <Link key={item.path} to={item.path} className={`nav-item ${isActive(item.path) ? 'active' : ''}`}>
+                <item.icon size={16} />
+                <span style={{ flex: 1 }}>{item.name}</span>
+                {isActive(item.path) && <ChevronRight size={13} style={{ opacity: 0.4 }} />}
+              </Link>
+            ))}
+          </nav>
+        </div>
 
-        {/* User */}
-        <div className="p-3 border-t border-white/5">
-          <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-              {initials}
+        {/* User Section */}
+        <div style={{ padding: '8px 12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 12px', borderRadius: 8,
+            background: 'rgba(255,255,255,0.04)',
+          }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 6, background: 'var(--accent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0,
+            }}>{initials}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ color: '#fff', fontSize: 12, fontWeight: 600, lineHeight: 1, marginBottom: 2 }} className="truncate">{user?.fullName}</p>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, textTransform: 'capitalize' }}>{user?.role}</p>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-semibold truncate leading-none">{user?.fullName}</p>
-              <p className="text-white/40 text-[10px] uppercase tracking-wide mt-0.5">{user?.role}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              title="Keluar"
-              className="p-1.5 text-white/30 hover:text-red-400 transition-colors rounded-lg hover:bg-white/5"
+            <button onClick={handleLogout} title="Keluar" style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+              color: 'rgba(255,255,255,0.3)', borderRadius: 4, transition: 'color 0.12s',
+              display: 'flex', alignItems: 'center',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#FC8181')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
             >
-              <LogOut size={16} />
+              <LogOut size={15} />
             </button>
           </div>
         </div>
       </aside>
 
-      {/* ── MOBILE HEADER ── */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 flex items-center justify-between px-4 h-14">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
-            <QrCode size={14} className="text-white" />
+      {/* ── MOBILE TOP BAR ── */}
+      <div className="lg:hidden" style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
+        height: 56, background: 'rgba(255,255,255,0.92)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(0,0,0,0.06)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 26, height: 26, background: 'var(--accent)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <QrCode size={13} color="#fff" />
           </div>
-          <span className="font-bold text-sm text-gray-900">EHS Equipment</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink)' }}>EHS Equipment</span>
         </div>
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="p-2 text-gray-500 hover:text-gray-900"
-        >
+        <button onClick={() => setDrawerOpen(true)} style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: 'var(--ink-2)',
+        }}>
           <Menu size={20} />
         </button>
       </div>
 
       {/* ── MOBILE DRAWER ── */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <div className="relative w-72 bg-[#0D1117] flex flex-col h-full">
-            <div className="px-5 py-5 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <QrCode size={16} className="text-white" />
+      {drawerOpen && (
+        <div className="lg:hidden" style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} onClick={() => setDrawerOpen(false)} />
+          <div style={{
+            position: 'absolute', right: 0, top: 0, bottom: 0, width: 280,
+            background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column',
+            animation: 'slideRight 0.22s ease',
+          }}>
+            <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 26, height: 26, background: 'var(--accent)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <QrCode size={13} color="#fff" />
                 </div>
-                <div>
-                  <p className="text-white font-bold text-sm">EHS Equipment</p>
-                  <p className="text-blue-400 text-[10px] uppercase tracking-widest">Testing System</p>
-                </div>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>EHS Equipment</span>
               </div>
-              <button onClick={() => setSidebarOpen(false)} className="text-white/40 hover:text-white">
+              <button onClick={() => setDrawerOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)' }}>
                 <X size={20} />
               </button>
             </div>
-            <nav className="flex-1 px-3 py-4 space-y-1">
-              {allMenuItems.map(item => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setSidebarOpen(false)}
+            <nav style={{ flex: 1, padding: '12px' }}>
+              {allNav.map(item => (
+                <Link key={item.path} to={item.path} onClick={() => setDrawerOpen(false)}
                   className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
-                >
-                  <item.icon size={18} />
+                  style={{ marginBottom: 2 }}>
+                  <item.icon size={17} />
                   {item.name}
                 </Link>
               ))}
             </nav>
-            <div className="p-3 border-t border-white/5">
-              <div className="flex items-center gap-3 px-3 py-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
-                  {initials}
+            <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px', background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>{initials}</div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>{user?.fullName}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textTransform: 'capitalize' }}>{user?.role}</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-semibold truncate">{user?.fullName}</p>
-                  <p className="text-white/40 text-[10px] uppercase tracking-wide">{user?.role}</p>
-                </div>
-                <button onClick={handleLogout} className="text-white/30 hover:text-red-400 transition-colors">
+                <button onClick={handleLogout} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 4 }}>
                   <LogOut size={16} />
                 </button>
               </div>
@@ -159,25 +165,27 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <main className="flex-1 p-4 lg:p-8 mt-14 lg:mt-0 pb-20 lg:pb-8 overflow-y-auto">
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <main style={{ flex: 1, overflowY: 'auto' }}
+          className="pt-14 lg:pt-0 main-content">
           {children}
         </main>
       </div>
 
-      {/* ── BOTTOM NAV (Mobile only) ── */}
+      {/* ── MOBILE BOTTOM NAV ── */}
       <nav className="bottom-nav lg:hidden">
-        {allMenuItems.map(item => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`bottom-nav-item ${isActive(item.path) ? 'active' : ''}`}
-          >
-            <item.icon size={20} strokeWidth={isActive(item.path) ? 2.5 : 1.8} />
+        {allNav.map(item => (
+          <Link key={item.path} to={item.path} className={`bottom-nav-item ${isActive(item.path) ? 'active' : ''}`}>
+            {isActive(item.path) && <span className="nav-pill" />}
+            <item.icon size={22} strokeWidth={isActive(item.path) ? 2.5 : 1.8} />
             {item.name}
           </Link>
         ))}
       </nav>
+
+      <style>{`
+        @keyframes slideRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+      `}</style>
     </div>
   );
 };
