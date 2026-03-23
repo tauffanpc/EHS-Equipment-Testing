@@ -9,9 +9,9 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { ChevronLeft, Download, ShieldCheck, CheckCircle2, Clock, User, Package, Wrench, Calendar, Building2, Tag } from 'lucide-react';
 
 const useIsMobile = () => {
-  const [v, setV] = useState(window.innerWidth < 1024);
-  useEffect(() => { const fn = () => setV(window.innerWidth < 1024); window.addEventListener('resize', fn); return () => window.removeEventListener('resize', fn); }, []);
-  return v;
+  const [isMob, setIsMob] = useState(window.innerWidth < 1024);
+  useEffect(() => { const fn = () => setIsMob(window.innerWidth < 1024); window.addEventListener('resize', fn); return () => window.removeEventListener('resize', fn); }, []);
+  return isMob;
 };
 
 export const EquipmentDetailPage: React.FC = () => {
