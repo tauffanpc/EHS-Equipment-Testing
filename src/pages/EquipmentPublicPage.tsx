@@ -1,158 +1,109 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Equipment, Inspection } from '../types';
-import { EquipmentDetail } from '../components/EquipmentDetail';
-import { QrCode, LogIn, Loader2, AlertCircle } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Equipment, mapDbToEquipment, getRiksaUjiStatus, getRiksaUjiColor, riksaUjiStatusLabel, formatDate } from '../types';
+import { QrCode, LogIn, AlertCircle, Loader2, ChevronLeft } from 'lucide-react';
 
 export const EquipmentPublicPage: React.FC = () => {
   const { equipmentNo } = useParams<{ equipmentNo: string }>();
+  const navigate = useNavigate();
   const [equipment, setEquipment] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
-  const navigate = useNavigate();
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    checkUser();
-
-    const fetchEquipment = async () => {
+    const fetch = async () => {
       if (!equipmentNo) return;
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('equipments')
-        .select('*')
-        .eq('equipment_no', equipmentNo)
-        .single();
-
-      if (error || !data) {
-        setError('Equipment not found');
-      } else {
-        const mappedData: Equipment = {
-          id: data.id,
-          equipmentNo: data.equipment_no,
-          equipmentName: data.equipment_name || data.specs?.equipment_name || '',
-          equipmentType: data.equipment_type || data.specs?.equipment_type || '',
-          category: data.category,
-          department: data.department || data.specs?.department || '',
-          specs: data.specs || {},
-          status: data.status || 'Good',
-          qrUrl: data.qr_url,
-          lastInspectionDate: data.last_inspection_date,
-          validityPeriod: data.validity_period,
-          nextInspectionDate: data.next_inspection_date,
-          updatedAt: data.updated_at,
-          updatedBy: data.updated_by,
-          inspections: data.inspections || []
-        };
-        setEquipment(mappedData);
-      }
+      const { data, error } = await supabase.from('equipments').select('*').eq('equipment_no', equipmentNo).single();
+      if (error || !data) { setError(true); } else { setEquipment(mapDbToEquipment(data)); }
       setLoading(false);
     };
-
-    fetchEquipment();
+    fetch();
   }, [equipmentNo]);
 
-  const handleUpdate = async (updatedEquip: Equipment) => {
-    if (!user) {
-      alert('Please login to update equipment');
-      navigate('/login');
-      return;
-    }
+  if (loading) return (
+    <div className="min-h-screen bg-[#F4F6F9] flex items-center justify-center">
+      <Loader2 className="animate-spin text-gray-400" size={36} />
+    </div>
+  );
 
-    const { error } = await supabase
-      .from('equipments')
-      .update({
-        status: updatedEquip.status,
-        department: updatedEquip.department,
-        inspections: updatedEquip.inspections,
-        updated_at: new Date().toISOString(),
-        updated_by: user.user_metadata?.full_name || user.email
-      })
-      .eq('id', updatedEquip.id);
+  if (error || !equipment) return (
+    <div className="min-h-screen bg-[#F4F6F9] flex flex-col items-center justify-center p-6 text-center">
+      <AlertCircle size={48} className="text-red-400 mb-4" />
+      <h1 className="text-xl font-bold text-gray-900 mb-2">Peralatan Tidak Ditemukan</h1>
+      <p className="text-gray-500 text-sm mb-6">Nomor peralatan "{equipmentNo}" tidak ada dalam sistem.</p>
+      <button onClick={() => navigate('/public-scan')} className="btn btn-primary">Scan Ulang</button>
+    </div>
+  );
 
-    if (error) {
-      alert('Error updating equipment: ' + error.message);
-    } else {
-      setEquipment(updatedEquip);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="animate-spin text-slate-400" size={48} />
-      </div>
-    );
-  }
-
-  if (error || !equipment) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-        <AlertCircle className="text-red-500 mb-4" size={64} />
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Peralatan Tidak Ditemukan</h1>
-        <p className="text-slate-500 mb-8">Maaf, kami tidak dapat menemukan data untuk nomor peralatan ini.</p>
-        <button onClick={() => navigate('/')} className="btn-primary">Kembali ke Beranda</button>
-      </div>
-    );
-  }
+  const riksaStatus = getRiksaUjiStatus(equipment.nextInspectionDate);
+  const riksaColor = getRiksaUjiColor(riksaStatus);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-100 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <QrCode size={22} />
-            </div>
-            <div>
-              <h1 className="font-bold text-lg tracking-tight leading-none">EquipTrack</h1>
-              <span className="label-micro text-emerald-600">Public Access</span>
-            </div>
+    <div className="min-h-screen bg-[#F4F6F9]">
+      {/* Header */}
+      <div className="bg-[#0D1117] px-4 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="text-white/50 hover:text-white mr-1">
+            <ChevronLeft size={20} />
+          </button>
+          <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
+            <QrCode size={14} className="text-white" />
           </div>
-          
-          {!user ? (
-            <button 
-              onClick={() => navigate('/login')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all"
-            >
-              <LogIn size={18} /> Login Petugas
-            </button>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-slate-900">{user.user_metadata?.full_name || user.email}</p>
-                <p className="label-micro text-emerald-600">Authenticated</p>
-              </div>
-              <button 
-                onClick={() => navigate('/dashboard')}
-                className="px-5 py-2.5 bg-slate-100 text-slate-900 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
-              >
-                Dashboard
-              </button>
-            </div>
-          )}
+          <p className="text-white font-bold text-sm">EHS Equipment Testing</p>
         </div>
-      </header>
+        <button onClick={() => navigate('/login')} className="btn btn-secondary py-1.5 px-3 text-xs">
+          <LogIn size={13} /> Login
+        </button>
+      </div>
 
-      <main className="p-4 lg:p-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <EquipmentDetail 
-            equipment={equipment} 
-            onBack={() => navigate('/')} 
-            onUpdate={handleUpdate}
-            isPublicMode={!user}
-          />
-        </motion.div>
-      </main>
+      <div className="max-w-lg mx-auto p-4 space-y-4">
+        {/* Status Banner */}
+        <div className={`notif-banner ${riksaStatus === 'expired' ? 'notif-danger' : riksaStatus === 'warning' ? 'notif-warning' : 'notif-info'}`}>
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-0.5 ${riksaColor.dot}`} />
+          <div>
+            <p className="font-semibold text-sm">Status Riksa Uji: {riksaUjiStatusLabel[riksaStatus]}</p>
+            {equipment.nextInspectionDate && (
+              <p className="text-xs opacity-80 mt-0.5">
+                {riksaStatus === 'expired' ? 'Sudah lewat' : 'Jatuh tempo'}: {formatDate(equipment.nextInspectionDate)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Equipment Info */}
+        <div className="card p-5">
+          <div className="mb-4">
+            <p className="text-2xl font-bold text-gray-900 font-mono">{equipment.equipmentNo}</p>
+            <p className="text-gray-500 font-medium">{equipment.equipmentName}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'Kategori', value: equipment.category },
+              { label: 'Departemen', value: equipment.department || '-' },
+              { label: 'Tipe', value: equipment.equipmentType || '-' },
+              { label: 'Merk', value: equipment.brand || '-' },
+              { label: 'Riksa Uji Terakhir', value: formatDate(equipment.lastInspectionDate) },
+              { label: 'Masa Berlaku', value: equipment.validityPeriod || '-' },
+            ].map(item => (
+              <div key={item.label} className="bg-gray-50 rounded-lg p-3">
+                <p className="text-gray-400 text-xs mb-0.5">{item.label}</p>
+                <p className="font-semibold text-gray-800 text-sm">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Login CTA */}
+        <div className="card p-4 border border-blue-100 bg-blue-50/50">
+          <p className="text-sm font-semibold text-blue-800 mb-3">
+            Anda seorang petugas? Login untuk mengupdate status dan riwayat riksa uji.
+          </p>
+          <button onClick={() => navigate('/login')} className="btn btn-primary w-full">
+            <LogIn size={15} /> Login sebagai Petugas
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
