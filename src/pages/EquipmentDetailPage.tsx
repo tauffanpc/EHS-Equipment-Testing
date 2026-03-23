@@ -73,7 +73,7 @@ export const EquipmentDetailPage: React.FC = () => {
   const statusColor = riksaStatus === 'active' ? 'var(--green)' : riksaStatus === 'warning' ? 'var(--amber)' : riksaStatus === 'expired' ? 'var(--red)' : 'var(--gray)';
   const qrValue = `${window.location.origin}/scan/${equipment.equipmentNo}`;
 
-  const specItems = Object.entries(equipment.specs || {}).filter(([, v]) => v);
+  const specItems = Object.entries(equipment.specs || {}).filter(([, val]) => val);
 
   // ── MOBILE ────────────────────────────────────────────────────────────────────
   if (isMobile) return (
@@ -289,10 +289,10 @@ export const EquipmentDetailPage: React.FC = () => {
               <div className="surface" style={{ padding: 24 }}>
                 <div className="section-header" style={{ marginBottom: 20 }}><h2 className="text-heading">Spesifikasi Teknis</h2></div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
-                  {specItems.map(([k, v]) => (
-                    <div key={k}>
-                      <p className="text-label" style={{ marginBottom: 4 }}>{k.replace(/([A-Z])/g, ' $1').trim()}</p>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{v}</p>
+                  {specItems.map(([specKey, specVal]) => (
+                    <div key={specKey}>
+                      <p className="text-label" style={{ marginBottom: 4 }}>{specKey.replace(/([A-Z])/g, ' $1').trim()}</p>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{specVal}</p>
                     </div>
                   ))}
                 </div>
