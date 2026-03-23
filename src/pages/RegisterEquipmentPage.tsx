@@ -6,115 +6,76 @@ import { useAuth } from '../App';
 import { useToast } from '../hooks/useToast';
 import { Equipment, EquipmentCategory, ValidityPeriod, calculateNextInspectionDate, mapEquipmentToDb } from '../types';
 import { QRCodeCanvas } from 'qrcode.react';
-import { CheckCircle2, Download, Upload, X, ChevronDown, FileSpreadsheet } from 'lucide-react';
+import { CheckCircle2, Download, FileSpreadsheet, X, ChevronDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const CATEGORIES: EquipmentCategory[] = ['Fire Equipment', 'Heavy Equipment', 'Bejana Tekan', 'Tangki Timbun', 'Lain-lain'];
-const VALIDITY_OPTIONS: ValidityPeriod[] = ['6 Bulan', '1 Tahun', '2 Tahun', '3 Tahun'];
-
-const PRESSURE_CATEGORIES: EquipmentCategory[] = ['Bejana Tekan', 'Tangki Timbun'];
+const VALIDITY: ValidityPeriod[] = ['6 Bulan', '1 Tahun', '2 Tahun', '3 Tahun'];
+const PRESSURE_CATS: EquipmentCategory[] = ['Bejana Tekan', 'Tangki Timbun'];
 
 interface FormData {
-  equipmentNo: string;
-  equipmentName: string;
-  equipmentType: string;
-  brand: string;
-  manufactureYear: string;
-  category: EquipmentCategory;
-  department: string;
-  lastInspectionDate: string;
-  validityPeriod: ValidityPeriod;
-  capacity: string;
-  volume: string;
-  designPressure: string;
-  workingPressure: string;
+  equipmentNo: string; equipmentName: string; equipmentType: string;
+  brand: string; manufactureYear: string; category: EquipmentCategory; department: string;
+  lastInspectionDate: string; validityPeriod: ValidityPeriod;
+  capacity: string; volume: string; designPressure: string; workingPressure: string;
   customCategoryName: string;
 }
 
-const emptyForm: FormData = {
-  equipmentNo: '', equipmentName: '', equipmentType: '',
-  brand: '', manufactureYear: '', category: 'Fire Equipment',
-  department: '', lastInspectionDate: '', validityPeriod: '1 Tahun',
-  capacity: '', volume: '', designPressure: '', workingPressure: '',
-  customCategoryName: '',
+const empty: FormData = {
+  equipmentNo: '', equipmentName: '', equipmentType: '', brand: '', manufactureYear: '',
+  category: 'Fire Equipment', department: '', lastInspectionDate: '', validityPeriod: '1 Tahun',
+  capacity: '', volume: '', designPressure: '', workingPressure: '', customCategoryName: '',
 };
 
-interface SuccessModalProps {
-  equipment: Equipment;
-  onClose: () => void;
-}
-
-const SuccessModal: React.FC<SuccessModalProps> = ({ equipment, onClose }) => {
-  const qrRef = useRef<HTMLDivElement>(null);
+const SuccessModal: React.FC<{ equipment: Equipment; onClose: () => void }> = ({ equipment, onClose }) => {
   const navigate = useNavigate();
+  const qrRef = useRef<HTMLDivElement>(null);
 
   const downloadQR = () => {
     if (!qrRef.current) return;
     const canvas = qrRef.current.querySelector('canvas');
     if (!canvas) return;
-    const finalCanvas = document.createElement('canvas');
-    const ctx = finalCanvas.getContext('2d');
-    if (!ctx) return;
-    const pad = 60;
-    const textH = 160;
-    finalCanvas.width = canvas.width + pad * 2;
-    finalCanvas.height = canvas.height + pad * 2 + textH;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+    const fc = document.createElement('canvas'); const ctx = fc.getContext('2d'); if (!ctx) return;
+    const pad = 60; fc.width = canvas.width + pad * 2; fc.height = canvas.height + pad * 2 + 160;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, fc.width, fc.height);
     ctx.drawImage(canvas, pad, pad);
-    ctx.fillStyle = '#0D1117';
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 40px sans-serif';
-    ctx.fillText('EHS Equipment Testing', finalCanvas.width / 2, canvas.height + pad + 50);
-    ctx.font = 'bold 64px sans-serif';
-    ctx.fillText(equipment.equipmentNo, finalCanvas.width / 2, canvas.height + pad + 120);
-    const url = finalCanvas.toDataURL('image/png', 1.0);
-    const a = document.createElement('a');
-    a.download = `QR-${equipment.equipmentNo}.png`;
-    a.href = url;
-    a.click();
+    ctx.fillStyle = '#111'; ctx.textAlign = 'center';
+    ctx.font = 'bold 40px sans-serif'; ctx.fillText('EHS Equipment Testing', fc.width / 2, canvas.height + pad + 50);
+    ctx.font = 'bold 60px monospace'; ctx.fillText(equipment.equipmentNo, fc.width / 2, canvas.height + pad + 120);
+    const a = document.createElement('a'); a.download = `QR-${equipment.equipmentNo}.png`; a.href = fc.toDataURL('image/png', 1.0); a.click();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-        <div className="bg-emerald-500 p-6 text-center">
-          <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            <CheckCircle2 size={28} className="text-white" />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+      <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 380, overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+        <div style={{ background: 'linear-gradient(135deg,#16A34A,#15803D)', padding: '24px 24px 28px', textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <CheckCircle2 size={28} color="#fff" />
           </div>
-          <h2 className="text-white font-bold text-lg">Registrasi Berhasil!</h2>
-          <p className="text-emerald-100 text-sm mt-1">{equipment.equipmentNo} telah didaftarkan</p>
+          <h2 style={{ color: '#fff', fontWeight: 800, fontSize: 18, marginBottom: 4 }}>Registrasi Berhasil!</h2>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>{equipment.equipmentNo} telah didaftarkan ke sistem</p>
         </div>
-        <div className="p-6 space-y-4">
-          <div ref={qrRef} className="flex flex-col items-center p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <QRCodeCanvas value={equipment.qrUrl} size={160} level="H" includeMargin={false} />
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-3">EHS Equipment Testing</p>
-            <p className="text-base font-bold text-gray-900">{equipment.equipmentNo}</p>
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div ref={qrRef} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px', background: '#F9FAFB', borderRadius: 14, border: '1px solid #E5E7EB' }}>
+            <QRCodeCanvas value={equipment.qrUrl} size={150} level="H" includeMargin={false} />
+            <p style={{ fontSize: 9, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 10 }}>EHS Equipment Testing</p>
+            <p style={{ fontWeight: 800, fontSize: 15, color: '#111', fontFamily: 'monospace', marginTop: 2 }}>{equipment.equipmentNo}</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-400 text-xs">Nama</p>
-              <p className="font-semibold text-gray-800 truncate">{equipment.equipmentName}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-gray-400 text-xs">Kategori</p>
-              <p className="font-semibold text-gray-800 truncate">{equipment.category}</p>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[{ l: 'Nama', v: equipment.equipmentName }, { l: 'Kategori', v: equipment.category }, { l: 'Departemen', v: equipment.department }, { l: 'Status', v: 'Terdaftar' }].map(r => (
+              <div key={r.l} style={{ background: '#F9FAFB', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 2 }}>{r.l}</p>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#111' }}>{r.v}</p>
+              </div>
+            ))}
           </div>
-          <div className="flex gap-2">
-            <button onClick={downloadQR} className="btn btn-success flex-1">
-              <Download size={15} /> Download QR
-            </button>
-            <button onClick={onClose} className="btn btn-secondary flex-1">
-              Tutup
-            </button>
-          </div>
-          <button
-            onClick={() => navigate(`/inventory/${equipment.id}`)}
-            className="btn btn-primary w-full"
-          >
-            Lihat Detail Peralatan
+          <button onClick={downloadQR} style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #BBF7D0', borderRadius: 12, height: 46, fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <Download size={16} /> Download QR Code
           </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} style={{ flex: 1, height: 44, background: '#F3F4F6', border: 'none', borderRadius: 12, fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Daftar Lagi</button>
+            <button onClick={() => navigate(`/inventory/${equipment.id}`)} style={{ flex: 1, height: 44, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Lihat Detail</button>
+          </div>
         </div>
       </div>
     </div>
@@ -124,310 +85,232 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ equipment, onClose }) => {
 export const RegisterEquipmentPage: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [form, setForm] = useState<FormData>(emptyForm);
+  const navigate = useNavigate();
+  const [form, setForm] = useState<FormData>(empty);
   const [loading, setLoading] = useState(false);
-  const [successEquip, setSuccessEquip] = useState<Equipment | null>(null);
+  const [success, setSuccess] = useState<Equipment | null>(null);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [showImport, setShowImport] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const set = (field: keyof FormData, value: string) =>
-    setForm(prev => ({ ...prev, [field]: value }));
-
-  const nextDate = form.lastInspectionDate
-    ? calculateNextInspectionDate(form.lastInspectionDate, form.validityPeriod)
-    : '';
+  const set = (k: keyof FormData, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const nextDate = form.lastInspectionDate ? calculateNextInspectionDate(form.lastInspectionDate, form.validityPeriod) : '';
+  const isPressure = PRESSURE_CATS.includes(form.category);
+  const isLainlain = form.category === 'Lain-lain';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.equipmentNo || !form.equipmentName || !form.category || !form.department) {
-      toast.error('Lengkapi field wajib: No. Peralatan, Nama, Kategori, Departemen');
-      return;
-    }
+    if (!form.equipmentNo || !form.equipmentName || !form.department) { toast.error('Lengkapi field wajib'); return; }
     setLoading(true);
     const qrUrl = `${window.location.origin}/scan/${form.equipmentNo}`;
-    const newEquip: Equipment = {
-      id: '',
-      equipmentNo: form.equipmentNo,
-      equipmentName: form.equipmentName,
-      equipmentType: form.equipmentType,
-      brand: form.brand,
-      manufactureYear: form.manufactureYear,
-      category: form.category,
-      department: form.department,
+    const equip: Equipment = {
+      id: '', equipmentNo: form.equipmentNo, equipmentName: form.equipmentName,
+      equipmentType: form.equipmentType, brand: form.brand, manufactureYear: form.manufactureYear,
+      category: form.category, department: form.department,
       specs: {
-        ...(PRESSURE_CATEGORIES.includes(form.category) && {
-          capacity: form.capacity,
-          volume: form.volume,
-          designPressure: form.designPressure,
-          workingPressure: form.workingPressure,
-        }),
-        ...(form.category === 'Lain-lain' && { customCategoryName: form.customCategoryName }),
+        ...(isPressure && { capacity: form.capacity, volume: form.volume, designPressure: form.designPressure, workingPressure: form.workingPressure }),
+        ...(isLainlain && { customCategoryName: form.customCategoryName }),
       },
-      status: 'Good',
-      qrUrl,
+      status: 'Good', qrUrl,
       lastInspectionDate: form.lastInspectionDate || undefined,
       validityPeriod: form.lastInspectionDate ? form.validityPeriod : undefined,
       nextInspectionDate: nextDate || undefined,
-      inspections: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      updatedBy: user?.fullName || user?.employeeId || 'System',
+      inspections: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      updatedBy: user?.fullName || '',
     };
-
-    const dbRow = mapEquipmentToDb(newEquip, user?.fullName || '');
-    const { data, error } = await supabase.from('equipments').insert([dbRow]).select().single();
-
-    if (error) {
-      toast.error('Gagal menyimpan: ' + error.message);
-    } else {
-      const saved = { ...newEquip, id: data.id };
-      setSuccessEquip(saved);
-      setForm(emptyForm);
-    }
+    const { data, error } = await supabase.from('equipments').insert([mapEquipmentToDb(equip, user?.fullName || '')]).select().single();
+    if (error) { toast.error('Gagal menyimpan: ' + error.message); }
+    else { setSuccess({ ...equip, id: data.id }); setForm(empty); }
     setLoading(false);
   };
 
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-      if (rows.length < 2) { toast.error('File Excel kosong atau format tidak sesuai'); return; }
-      const headers = rows[0];
+    reader.onload = ev => {
+      const wb = XLSX.read(new Uint8Array(ev.target?.result as ArrayBuffer), { type: 'array' });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 }) as any[][];
       const preview = rows.slice(1).filter(r => r.some(Boolean)).map(r => ({
-        equipmentNo: r[0] || '',
-        equipmentName: r[1] || '',
-        category: r[2] || 'Fire Equipment',
-        equipmentType: r[3] || '',
-        department: r[4] || '',
-        brand: r[5] || '',
-        manufactureYear: r[6]?.toString() || '',
+        equipmentNo: r[0] || '', equipmentName: r[1] || '', category: r[2] || 'Fire Equipment',
+        equipmentType: r[3] || '', department: r[4] || '', brand: r[5] || '', manufactureYear: r[6]?.toString() || '',
       }));
-      setImportPreview(preview);
-      setShowImport(true);
+      setImportPreview(preview); setShowImport(true);
     };
-    reader.readAsArrayBuffer(file);
-    e.target.value = '';
+    reader.readAsArrayBuffer(file); e.target.value = '';
   };
 
   const handleBulkImport = async () => {
-    if (importPreview.length === 0) return;
-    setLoading(true);
-    let success = 0;
-    for (const row of importPreview) {
-      if (!row.equipmentNo) continue;
-      const qrUrl = `${window.location.origin}/scan/${row.equipmentNo}`;
+    setLoading(true); let ok = 0;
+    for (const r of importPreview) {
+      if (!r.equipmentNo) continue;
       const equip: Equipment = {
-        id: '', equipmentNo: row.equipmentNo, equipmentName: row.equipmentName,
-        equipmentType: row.equipmentType, brand: row.brand, manufactureYear: row.manufactureYear,
-        category: row.category as EquipmentCategory, department: row.department,
-        specs: {}, status: 'Good', qrUrl, inspections: [],
-        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        updatedBy: user?.fullName || '',
+        id: '', equipmentNo: r.equipmentNo, equipmentName: r.equipmentName, equipmentType: r.equipmentType,
+        brand: r.brand, manufactureYear: r.manufactureYear, category: r.category as EquipmentCategory,
+        department: r.department, specs: {}, status: 'Good',
+        qrUrl: `${window.location.origin}/scan/${r.equipmentNo}`,
+        inspections: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: user?.fullName || '',
       };
       const { error } = await supabase.from('equipments').insert([mapEquipmentToDb(equip, user?.fullName || '')]);
-      if (!error) success++;
+      if (!error) ok++;
     }
-    toast.success(`${success} peralatan berhasil diimpor`);
-    setShowImport(false);
-    setImportPreview([]);
-    setLoading(false);
+    toast.success(`${ok} peralatan berhasil diimpor`);
+    setShowImport(false); setImportPreview([]); setLoading(false);
   };
 
-  const isPressure = PRESSURE_CATEGORIES.includes(form.category);
-  const isLainlain = form.category === 'Lain-lain';
+  const Label: React.FC<{ children: React.ReactNode; optional?: boolean }> = ({ children, optional }) => (
+    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)' }}>{children}</span>
+      {optional && <span style={{ fontSize: 11, color: 'var(--ink-3)', background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>Opsional</span>}
+    </label>
+  );
+
+  const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div className="surface" style={{ padding: 24, overflow: 'hidden' }}>
+      <div className="section-header" style={{ marginBottom: 20 }}><h2 className="text-heading">{title}</h2></div>
+      {children}
+    </div>
+  );
 
   return (
     <Layout>
-      {successEquip && (
-        <SuccessModal equipment={successEquip} onClose={() => setSuccessEquip(null)} />
-      )}
+      {success && <SuccessModal equipment={success} onClose={() => setSuccess(null)} />}
 
       {showImport && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h2 className="font-bold text-gray-900">Preview Import ({importPreview.length} data)</h2>
-              <button onClick={() => { setShowImport(false); setImportPreview([]); }} className="btn-icon">
-                <X size={16} />
-              </button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 700, maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontWeight: 700, fontSize: 16 }}>Preview Import ({importPreview.length} data)</h2>
+              <button onClick={() => { setShowImport(false); setImportPreview([]); }} className="btn-icon"><X size={16} /></button>
             </div>
-            <div className="overflow-auto flex-1 p-5">
+            <div style={{ overflow: 'auto', flex: 1, padding: '0 4px' }}>
               <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>No. Peralatan</th><th>Nama</th><th>Kategori</th>
-                    <th>Departemen</th><th>Merk</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>No. Peralatan</th><th>Nama</th><th>Kategori</th><th>Departemen</th><th>Merk</th></tr></thead>
                 <tbody>
                   {importPreview.map((r, i) => (
-                    <tr key={i}>
-                      <td className="font-mono font-semibold">{r.equipmentNo}</td>
-                      <td>{r.equipmentName}</td>
-                      <td>{r.category}</td>
-                      <td>{r.department}</td>
-                      <td>{r.brand}</td>
+                    <tr key={i} style={{ cursor: 'default' }}>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{r.equipmentNo}</td>
+                      <td>{r.equipmentName}</td><td>{r.category}</td><td>{r.department}</td><td>{r.brand}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="flex gap-3 p-5 border-t border-gray-100">
-              <button onClick={() => { setShowImport(false); setImportPreview([]); }} className="btn btn-secondary flex-1">Batal</button>
-              <button onClick={handleBulkImport} disabled={loading} className="btn btn-primary flex-1">
-                {loading ? 'Mengimpor...' : `Import ${importPreview.length} Data`}
-              </button>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+              <button onClick={() => { setShowImport(false); setImportPreview([]); }} className="btn btn-secondary" style={{ flex: 1 }}>Batal</button>
+              <button onClick={handleBulkImport} disabled={loading} className="btn btn-accent" style={{ flex: 2 }}>{loading ? 'Mengimpor...' : `Import ${importPreview.length} Data`}</button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div style={{ padding: '32px 40px', maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Registrasi Peralatan</h1>
-            <p className="text-gray-500 text-sm mt-0.5">Daftarkan peralatan EHS baru ke sistem</p>
+            <h1 className="text-display">Registrasi Peralatan</h1>
+            <p style={{ color: 'var(--ink-3)', fontSize: 14, marginTop: 6 }}>Daftarkan peralatan EHS baru ke dalam sistem</p>
           </div>
-          <div className="flex items-center gap-2">
-            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileImport} />
-            <button onClick={() => fileRef.current?.click()} className="btn btn-secondary">
-              <FileSpreadsheet size={15} className="text-emerald-600" />
-              <span className="hidden sm:inline">Import Excel</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleFileImport} />
+            <button onClick={() => fileRef.current?.click()} className="btn btn-secondary" style={{ gap: 6 }}>
+              <FileSpreadsheet size={14} style={{ color: '#16A34A' }} /> Import Excel
             </button>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* Bagian 1: Informasi Umum */}
-          <div className="card p-5 space-y-4">
-            <h2 className="font-bold text-gray-800 text-sm section-divider">Informasi Umum</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Section title="Informasi Umum">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
               <div>
-                <label className="label-xs text-gray-400 block mb-1.5">Nomor Peralatan *</label>
-                <input className="input-field" placeholder="EQ-001" value={form.equipmentNo} onChange={e => set('equipmentNo', e.target.value)} required />
+                <Label>Nomor Peralatan *</Label>
+                <input className="input-field" placeholder="Contoh: EQ-BT-001" required value={form.equipmentNo} onChange={e => set('equipmentNo', e.target.value)} />
               </div>
               <div>
-                <label className="label-xs text-gray-400 block mb-1.5">Kategori *</label>
+                <Label>Kategori *</Label>
                 <select className="input-field" value={form.category} onChange={e => set('category', e.target.value as EquipmentCategory)} required>
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="sm:col-span-2">
-                <label className="label-xs text-gray-400 block mb-1.5">Nama Peralatan *</label>
-                <input className="input-field" placeholder="Contoh: APAR CO2 5KG" value={form.equipmentName} onChange={e => set('equipmentName', e.target.value)} required />
+              <div style={{ gridColumn: '1 / -1' }}>
+                <Label>Nama Peralatan *</Label>
+                <input className="input-field" placeholder="Contoh: APAR CO2 5KG" required value={form.equipmentName} onChange={e => set('equipmentName', e.target.value)} />
               </div>
               <div>
-                <label className="label-xs text-gray-400 block mb-1.5">Tipe / Model</label>
+                <Label optional>Tipe / Model</Label>
                 <input className="input-field" placeholder="Contoh: MT5-CO2" value={form.equipmentType} onChange={e => set('equipmentType', e.target.value)} />
               </div>
               <div>
-                <label className="label-xs text-gray-400 block mb-1.5">Merk / Pabrikan</label>
+                <Label optional>Merk / Pabrikan</Label>
                 <input className="input-field" placeholder="Contoh: Yamato" value={form.brand} onChange={e => set('brand', e.target.value)} />
               </div>
               <div>
-                <label className="label-xs text-gray-400 block mb-1.5">Tahun Pembuatan</label>
-                <input className="input-field" placeholder="2020" type="number" min="1900" max={new Date().getFullYear()} value={form.manufactureYear} onChange={e => set('manufactureYear', e.target.value)} />
+                <Label optional>Tahun Pembuatan</Label>
+                <input className="input-field" type="number" placeholder="2020" min="1900" max={new Date().getFullYear()} value={form.manufactureYear} onChange={e => set('manufactureYear', e.target.value)} />
               </div>
               <div>
-                <label className="label-xs text-gray-400 block mb-1.5">Departemen *</label>
-                <input className="input-field" placeholder="Contoh: Produksi" value={form.department} onChange={e => set('department', e.target.value)} required />
+                <Label>Departemen *</Label>
+                <input className="input-field" placeholder="Contoh: Produksi" required value={form.department} onChange={e => set('department', e.target.value)} />
               </div>
               {isLainlain && (
-                <div className="sm:col-span-2">
-                  <label className="label-xs text-gray-400 block mb-1.5">Nama Kategori Custom</label>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Label optional>Nama Kategori Custom</Label>
                   <input className="input-field" placeholder="Isi nama kategori" value={form.customCategoryName} onChange={e => set('customCategoryName', e.target.value)} />
                 </div>
               )}
             </div>
-          </div>
+          </Section>
 
-          {/* Bagian 2: Riksa Uji (opsional) */}
-          <div className="card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold text-gray-800 text-sm section-divider">Riksa Uji</h2>
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">Opsional</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Section title="Riksa Uji">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
               <div>
-                <label className="label-xs text-gray-400 block mb-1.5">Tanggal Riksa Uji Terakhir</label>
+                <Label optional>Tanggal Riksa Uji Terakhir</Label>
                 <input className="input-field" type="date" value={form.lastInspectionDate} onChange={e => set('lastInspectionDate', e.target.value)} />
               </div>
               <div>
-                <label className="label-xs text-gray-400 block mb-1.5">Masa Berlaku</label>
+                <Label optional>Masa Berlaku</Label>
                 <select className="input-field" value={form.validityPeriod} onChange={e => set('validityPeriod', e.target.value as ValidityPeriod)} disabled={!form.lastInspectionDate}>
-                  {VALIDITY_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                  {VALIDITY.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               {nextDate && (
-                <div className="sm:col-span-2 bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <p className="label-xs text-blue-600 mb-1">Riksa Uji Berikutnya (otomatis)</p>
-                  <p className="font-bold text-blue-900 text-base">
+                <div style={{ gridColumn: '1 / -1', background: 'var(--accent-light)', border: '1px solid #BFDBFE', borderRadius: 8, padding: '12px 16px' }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Riksa Uji Berikutnya (otomatis)</p>
+                  <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--accent)' }}>
                     {new Date(nextDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                 </div>
               )}
             </div>
-          </div>
+          </Section>
 
-          {/* Bagian 3: Spesifikasi Teknis (dinamis) */}
           {isPressure && (
-            <div className="card p-5 space-y-4">
-              <h2 className="font-bold text-gray-800 text-sm section-divider">Spesifikasi Teknis</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label-xs text-gray-400 block mb-1.5">Kapasitas</label>
-                  <input className="input-field" placeholder="Contoh: 5000 L" value={form.capacity} onChange={e => set('capacity', e.target.value)} />
-                </div>
-                <div>
-                  <label className="label-xs text-gray-400 block mb-1.5">Volume</label>
-                  <input className="input-field" placeholder="Contoh: 4800 L" value={form.volume} onChange={e => set('volume', e.target.value)} />
-                </div>
-                <div>
-                  <label className="label-xs text-gray-400 block mb-1.5">Design Pressure</label>
-                  <input className="input-field" placeholder="Contoh: 15 bar" value={form.designPressure} onChange={e => set('designPressure', e.target.value)} />
-                </div>
-                <div>
-                  <label className="label-xs text-gray-400 block mb-1.5">Working Pressure</label>
-                  <input className="input-field" placeholder="Contoh: 10 bar" value={form.workingPressure} onChange={e => set('workingPressure', e.target.value)} />
-                </div>
+            <Section title="Spesifikasi Teknis">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+                <div><Label optional>Kapasitas</Label><input className="input-field" placeholder="Contoh: 5000 L" value={form.capacity} onChange={e => set('capacity', e.target.value)} /></div>
+                <div><Label optional>Volume</Label><input className="input-field" placeholder="Contoh: 4800 L" value={form.volume} onChange={e => set('volume', e.target.value)} /></div>
+                <div><Label optional>Design Pressure</Label><input className="input-field" placeholder="Contoh: 15 bar" value={form.designPressure} onChange={e => set('designPressure', e.target.value)} /></div>
+                <div><Label optional>Working Pressure</Label><input className="input-field" placeholder="Contoh: 10 bar" value={form.workingPressure} onChange={e => set('workingPressure', e.target.value)} /></div>
               </div>
-            </div>
+            </Section>
           )}
 
-          {/* Submit */}
-          <div className="flex gap-3">
-            <button type="button" onClick={() => setForm(emptyForm)} className="btn btn-secondary flex-1">
-              Reset
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary flex-[2]">
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" onClick={() => setForm(empty)} className="btn btn-secondary" style={{ flex: 1 }}>Reset Form</button>
+            <button type="submit" disabled={loading} className="btn btn-primary" style={{ flex: 2, height: 40 }}>
               {loading ? 'Menyimpan...' : 'Simpan Peralatan'}
             </button>
           </div>
 
+          <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px' }}>
+            <p className="text-label" style={{ marginBottom: 6 }}>Format Excel untuk Import</p>
+            <p style={{ fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.8 }}>
+              Kolom (urut):{' '}
+              {['No. Peralatan', 'Nama Peralatan', 'Kategori', 'Tipe', 'Departemen', 'Merk', 'Tahun'].map(c => (
+                <code key={c} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 5px', fontSize: 11, marginRight: 4, fontFamily: 'var(--font-mono)' }}>{c}</code>
+              ))}
+            </p>
+          </div>
         </form>
-
-        {/* Format Excel */}
-        <div className="card p-4 bg-gray-50">
-          <p className="label-xs text-gray-400 mb-2">Format Excel untuk Import</p>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            Kolom: <span className="font-mono bg-white border border-gray-200 px-1 rounded text-gray-700">No. Peralatan</span>{' '}
-            <span className="font-mono bg-white border border-gray-200 px-1 rounded text-gray-700">Nama Peralatan</span>{' '}
-            <span className="font-mono bg-white border border-gray-200 px-1 rounded text-gray-700">Kategori</span>{' '}
-            <span className="font-mono bg-white border border-gray-200 px-1 rounded text-gray-700">Tipe</span>{' '}
-            <span className="font-mono bg-white border border-gray-200 px-1 rounded text-gray-700">Departemen</span>{' '}
-            <span className="font-mono bg-white border border-gray-200 px-1 rounded text-gray-700">Merk</span>{' '}
-            <span className="font-mono bg-white border border-gray-200 px-1 rounded text-gray-700">Tahun</span>
-          </p>
-        </div>
       </div>
     </Layout>
   );
-};
+};v
