@@ -1,219 +1,227 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { Profile } from '../types';
-import { motion } from 'motion/react';
-import { 
-  Users, 
-  CheckCircle2, 
-  XCircle, 
-  Trash2, 
-  ShieldCheck, 
-  Clock, 
-  Search,
-  ChevronRight
-} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '../utils/cn';
+import { supabase } from '../lib/supabase';
 import { Layout } from '../components/Layout';
+import { useAuth } from '../App';
+import { useToast } from '../hooks/useToast';
+import { Profile } from '../types';
+import { Users, CheckCircle2, XCircle, Trash2, Search, Clock, ShieldCheck } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    checkAdmin();
     fetchProfiles();
   }, []);
 
-  const checkAdmin = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'superadmin') {
-      navigate('/inventory');
-      return;
-    }
-    setCurrentUser(profile);
-  };
-
   const fetchProfiles = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setProfiles(data);
+    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    if (data) {
+      setProfiles(data.map(p => ({
+        id: p.id,
+        employeeId: p.employee_id,
+        fullName: p.full_name,
+        role: p.role,
+        status: p.status,
+        createdAt: p.created_at,
+      })));
     }
     setLoading(false);
   };
 
-  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ status })
-      .eq('id', id);
-
-    if (!error) {
-      setProfiles(profiles.map(p => p.id === id ? { ...p, status } : p));
-    }
+  const updateStatus = async (id: string, status: 'approved' | 'rejected') => {
+    const { error } = await supabase.from('profiles').update({ status }).eq('id', id);
+    if (error) { toast.error('Gagal memperbarui status'); return; }
+    setProfiles(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+    toast.success(status === 'approved' ? 'Akun disetujui' : 'Akun ditolak');
   };
 
-  const handleDeleteUser = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus akun ini?')) return;
-
-    // In a real app, you'd also delete the auth user via an edge function or admin API.
-    // For now, we'll just delete the profile.
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', id);
-
-    if (!error) {
-      setProfiles(profiles.filter(p => p.id !== id));
-    }
+  const deleteUser = async (id: string, name: string) => {
+    if (!window.confirm(`Hapus akun ${name}?`)) return;
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (error) { toast.error('Gagal menghapus akun'); return; }
+    setProfiles(prev => prev.filter(p => p.id !== id));
+    toast.success('Akun berhasil dihapus');
   };
 
-  const filteredProfiles = profiles.filter(p => 
-    p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = profiles.filter(p =>
+    p.fullName.toLowerCase().includes(search.toLowerCase()) ||
+    p.employeeId.toLowerCase().includes(search.toLowerCase())
   );
 
-  const pendingCount = profiles.filter(p => p.status === 'pending').length;
+  const pending = profiles.filter(p => p.status === 'pending').length;
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto w-full">
-        {/* Stats & Search */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-          <div className="lg:col-span-2 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-              <input 
-                type="text" 
-                placeholder="Cari petugas berdasarkan nama atau ID..."
-                className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all font-medium"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+      <div className="max-w-5xl mx-auto space-y-6">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Admin Console</h1>
+            <p className="text-gray-500 text-sm mt-0.5">Kelola akses pengguna sistem</p>
           </div>
-          
-          <div className="bg-slate-900 rounded-3xl p-6 text-white flex items-center justify-between shadow-xl shadow-slate-200">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Menunggu Persetujuan</p>
-              <h3 className="text-3xl font-bold">{pendingCount}</h3>
-            </div>
-            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-              <Clock size={24} className="text-emerald-400" />
-            </div>
-          </div>
-        </div>
-
-        {/* User List */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-6">
-            <Users size={20} className="text-slate-400" />
-            <h2 className="text-lg font-extrabold text-slate-900">Daftar Petugas</h2>
-          </div>
-
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
-              <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Memuat Data...</p>
-            </div>
-          ) : filteredProfiles.length === 0 ? (
-            <div className="bg-white rounded-[2.5rem] p-20 text-center border border-slate-100">
-              <p className="text-slate-400 font-medium">Tidak ada petugas yang ditemukan.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredProfiles.map((profile) => (
-                <motion.div 
-                  layout
-                  key={profile.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="glass-card p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all relative overflow-hidden group"
-                >
-                  {profile.role === 'superadmin' && (
-                    <div className="absolute top-0 right-0 bg-slate-900 text-white text-[8px] font-bold uppercase px-3 py-1 rounded-bl-xl tracking-widest">
-                      Superadmin
-                    </div>
-                  )}
-
-                  <div className="flex items-start gap-4 mb-6">
-                    <div className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg",
-                      profile.status === 'approved' ? "bg-emerald-500" : 
-                      profile.status === 'rejected' ? "bg-red-500" : "bg-amber-500"
-                    )}>
-                      <Users size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 leading-tight">{profile.full_name}</h3>
-                      <p className="text-xs font-mono text-slate-400 mt-1">{profile.employee_id}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-6">
-                    <span className={cn(
-                      "text-[10px] font-bold uppercase px-3 py-1 rounded-full tracking-widest",
-                      profile.status === 'approved' ? "bg-emerald-50 text-emerald-600" : 
-                      profile.status === 'rejected' ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
-                    )}>
-                      {profile.status}
-                    </span>
-                    <span className="text-[10px] text-slate-300 font-medium">
-                      Dibuat: {new Date(profile.created_at).toLocaleDateString('id-ID')}
-                    </span>
-                  </div>
-
-                  {profile.role !== 'superadmin' && (
-                    <div className="flex gap-2 pt-4 border-t border-slate-50">
-                      {profile.status !== 'approved' && (
-                        <button 
-                          onClick={() => handleUpdateStatus(profile.id, 'approved')}
-                          className="flex-1 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-1"
-                        >
-                          <CheckCircle2 size={14} /> Setuju
-                        </button>
-                      )}
-                      {profile.status !== 'rejected' && (
-                        <button 
-                          onClick={() => handleUpdateStatus(profile.id, 'rejected')}
-                          className="flex-1 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-1"
-                        >
-                          <XCircle size={14} /> Tolak
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => handleDeleteUser(profile.id)}
-                        className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center"
-                        title="Hapus Akun"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
+          {pending > 0 && (
+            <div className="notif-banner notif-warning">
+              <Clock size={16} />
+              <span className="text-sm font-semibold">{pending} akun menunggu persetujuan</span>
             </div>
           )}
         </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: 'Total User', value: profiles.length, color: 'text-blue-600', bg: 'bg-blue-50', icon: Users },
+            { label: 'Aktif', value: profiles.filter(p => p.status === 'approved').length, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: CheckCircle2 },
+            { label: 'Pending', value: pending, color: 'text-amber-600', bg: 'bg-amber-50', icon: Clock },
+          ].map(s => (
+            <div key={s.label} className="stat-card flex items-center gap-4">
+              <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                <s.icon size={18} className={s.color} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{s.value}</p>
+                <p className="text-xs text-gray-400 font-medium">{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Cari nama atau ID karyawan..."
+            className="input-field pl-9"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Table - PC */}
+        <div className="card hidden lg:block overflow-hidden">
+          {loading ? (
+            <div className="flex justify-center py-12"><div className="spinner" /></div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Nama & ID</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Terdaftar</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(p => (
+                  <tr key={p.id} className="cursor-default">
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">
+                          {p.fullName.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-800 text-sm">{p.fullName}</p>
+                          <p className="text-xs text-gray-400 font-mono">{p.employeeId}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      {p.role === 'superadmin'
+                        ? <span className="badge bg-blue-50 text-blue-700 border-blue-200"><ShieldCheck size={10} /> Superadmin</span>
+                        : <span className="badge badge-unknown">User</span>
+                      }
+                    </td>
+                    <td>
+                      <span className={`badge ${
+                        p.status === 'approved' ? 'badge-active' :
+                        p.status === 'rejected' ? 'badge-expired' : 'badge-warning'
+                      }`}>
+                        {p.status === 'approved' ? 'Aktif' : p.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                      </span>
+                    </td>
+                    <td className="text-sm text-gray-500">
+                      {new Date(p.createdAt).toLocaleDateString('id-ID')}
+                    </td>
+                    <td>
+                      {p.role !== 'superadmin' && (
+                        <div className="flex items-center gap-2">
+                          {p.status !== 'approved' && (
+                            <button onClick={() => updateStatus(p.id, 'approved')} className="btn btn-success py-1.5 px-3 text-xs">
+                              <CheckCircle2 size={13} /> Setuju
+                            </button>
+                          )}
+                          {p.status !== 'rejected' && (
+                            <button onClick={() => updateStatus(p.id, 'rejected')} className="btn btn-danger py-1.5 px-3 text-xs">
+                              <XCircle size={13} /> Tolak
+                            </button>
+                          )}
+                          <button onClick={() => deleteUser(p.id, p.fullName)} className="btn-icon">
+                            <Trash2 size={14} className="text-red-400" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Card list - Mobile */}
+        <div className="lg:hidden space-y-3">
+          {loading ? (
+            <div className="flex justify-center py-12"><div className="spinner" /></div>
+          ) : filtered.map(p => (
+            <div key={p.id} className="card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center text-xs font-bold text-gray-500">
+                    {p.fullName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">{p.fullName}</p>
+                    <p className="text-xs text-gray-400 font-mono">{p.employeeId}</p>
+                  </div>
+                </div>
+                <span className={`badge ${
+                  p.status === 'approved' ? 'badge-active' :
+                  p.status === 'rejected' ? 'badge-expired' : 'badge-warning'
+                }`}>
+                  {p.status === 'approved' ? 'Aktif' : p.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                </span>
+              </div>
+              {p.role !== 'superadmin' && (
+                <div className="flex gap-2 pt-2 border-t border-gray-100">
+                  {p.status !== 'approved' && (
+                    <button onClick={() => updateStatus(p.id, 'approved')} className="btn btn-success flex-1 py-2 text-xs">
+                      <CheckCircle2 size={13} /> Setuju
+                    </button>
+                  )}
+                  {p.status !== 'rejected' && (
+                    <button onClick={() => updateStatus(p.id, 'rejected')} className="btn btn-danger flex-1 py-2 text-xs">
+                      <XCircle size={13} /> Tolak
+                    </button>
+                  )}
+                  <button onClick={() => deleteUser(p.id, p.fullName)} className="btn-icon">
+                    <Trash2 size={14} className="text-red-400" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
       </div>
     </Layout>
   );
