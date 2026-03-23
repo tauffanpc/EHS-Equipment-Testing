@@ -1,177 +1,118 @@
 import React, { useState } from 'react';
-import { supabase, employeeIdToEmail } from '../lib/supabase';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { QrCode, UserPlus, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { supabase, employeeIdToEmail } from '../lib/supabase';
+import { QrCode, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
-  const [employeeId, setEmployeeId] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ employeeId: '', fullName: '', password: '', confirm: '' });
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const navigate = useNavigate();
+
+  const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    if (form.password !== form.confirm) { setError('Sandi tidak cocok'); return; }
+    if (form.password.length < 6) { setError('Sandi minimal 6 karakter'); return; }
+    setLoading(true);
 
-    if (password !== confirmPassword) {
-      setError('Sandi tidak cocok');
-      setLoading(false);
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Sandi minimal 6 karakter');
-      setLoading(false);
-      return;
-    }
-
-    const email = employeeIdToEmail(employeeId);
-
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          employee_id: employeeId,
-        },
-      },
+    const email = employeeIdToEmail(form.employeeId);
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email, password: form.password,
+      options: { data: { full_name: form.fullName, employee_id: form.employeeId } },
     });
 
-    if (signUpError) {
-      setError(signUpError.message);
-    } else if (signUpData.user) {
-      // Create profile record
-      const isInitialAdmin = employeeId.toLowerCase() === 'admin001' || employeeId.toLowerCase() === 'admin';
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: signUpData.user.id,
-            employee_id: employeeId,
-            full_name: fullName,
-            role: isInitialAdmin ? 'superadmin' : 'user',
-            status: isInitialAdmin ? 'approved' : 'pending',
-          }
-        ]);
+    if (signUpError) { setError(signUpError.message); setLoading(false); return; }
 
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        // Even if profile creation fails (e.g. table doesn't exist yet), 
-        // we'll proceed but warn in console. In a real app, this should be handled better.
-      }
-
+    if (data.user) {
+      const { error: profileError } = await supabase.from('profiles').insert([{
+        id: data.user.id,
+        employee_id: form.employeeId,
+        full_name: form.fullName,
+        role: 'user',
+        status: 'pending',
+      }]);
+      if (profileError) console.error('Profile error:', profileError);
       setSuccess(true);
-      setTimeout(() => navigate('/login'), 3000);
+      setTimeout(() => navigate('/login'), 4000);
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-6 shadow-xl shadow-emerald-200">
-            <QrCode size={32} />
+    <div className="min-h-screen bg-[#F4F6F9] flex items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-6">
+
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center">
+            <QrCode size={18} className="text-white" />
           </div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">EquipTrack Pro</h1>
-          <p className="text-slate-500 mt-2">Daftar Akun Petugas Baru</p>
+          <div>
+            <p className="font-bold text-sm text-gray-900">EHS Equipment Testing</p>
+            <p className="text-blue-600 text-[10px] uppercase tracking-widest">Daftar Akun</p>
+          </div>
         </div>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-10 rounded-[2.5rem] shadow-2xl"
-        >
-          {success ? (
-            <div className="text-center py-8">
-              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mx-auto mb-6">
-                <CheckCircle2 size={40} />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Pendaftaran Berhasil!</h2>
-              <p className="text-slate-500">Akun Anda telah dibuat. Mengalihkan ke halaman login...</p>
+        {success ? (
+          <div className="card p-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 size={32} className="text-emerald-500" />
             </div>
-          ) : (
-            <form onSubmit={handleRegister} className="space-y-5">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">No ID Karyawan</label>
-                <input 
-                  type="text" 
-                  required
-                  className="input-field"
-                  placeholder="Contoh: KRY001"
-                  value={employeeId}
-                  onChange={(e) => setEmployeeId(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">Nama Lengkap</label>
-                <input 
-                  type="text" 
-                  required
-                  className="input-field"
-                  placeholder="Nama Lengkap Anda"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">Sandi</label>
-                <input 
-                  type="password" 
-                  required
-                  className="input-field"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">Konfirmasi Sandi</label>
-                <input 
-                  type="password" 
-                  required
-                  className="input-field"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </div>
+            <div>
+              <h2 className="font-bold text-gray-900 text-lg">Pendaftaran Berhasil!</h2>
+              <p className="text-gray-500 text-sm mt-1">Akun Anda sedang menunggu persetujuan Superadmin. Anda akan diarahkan ke halaman login.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="card p-6 space-y-5">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Buat Akun Baru</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Akun perlu disetujui Superadmin sebelum dapat digunakan</p>
+            </div>
 
-              {error && (
-                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm">
-                  <AlertCircle size={18} />
-                  {error}
+            {error && (
+              <div className="notif-banner notif-danger">
+                <AlertCircle size={15} className="flex-shrink-0" />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div>
+                <label className="label-xs text-gray-400 block mb-1.5">ID Karyawan *</label>
+                <input className="input-field" placeholder="Contoh: KRY001" required value={form.employeeId} onChange={e => set('employeeId', e.target.value)} />
+              </div>
+              <div>
+                <label className="label-xs text-gray-400 block mb-1.5">Nama Lengkap *</label>
+                <input className="input-field" placeholder="Nama sesuai ID karyawan" required value={form.fullName} onChange={e => set('fullName', e.target.value)} />
+              </div>
+              <div>
+                <label className="label-xs text-gray-400 block mb-1.5">Sandi *</label>
+                <div className="relative">
+                  <input className="input-field pr-11" type={showPass ? 'text' : 'password'} placeholder="Min. 6 karakter" required value={form.password} onChange={e => set('password', e.target.value)} />
+                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
-              )}
-
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="btn-primary w-full py-4 bg-slate-900 shadow-xl shadow-slate-200 flex items-center justify-center gap-2"
-              >
-                {loading ? 'Mendaftarkan...' : <><UserPlus size={20} /> Daftar Sekarang</>}
-              </button>
-
-              <div className="text-center mt-6">
-                <Link to="/login" className="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center justify-center gap-2">
-                  <ArrowLeft size={16} /> Kembali ke Login
-                </Link>
               </div>
+              <div>
+                <label className="label-xs text-gray-400 block mb-1.5">Konfirmasi Sandi *</label>
+                <input className="input-field" type="password" placeholder="Ulangi sandi" required value={form.confirm} onChange={e => set('confirm', e.target.value)} />
+              </div>
+              <button type="submit" disabled={loading} className="btn btn-primary w-full py-3 mt-2">
+                {loading ? 'Mendaftarkan...' : 'Daftar Sekarang'}
+              </button>
             </form>
-          )}
-        </motion.div>
 
-        <p className="text-center mt-10 text-slate-400 text-xs">
-          &copy; 2026 EquipTrack Pro. All rights reserved.
-        </p>
+            <Link to="/login" className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+              <ArrowLeft size={14} /> Kembali ke Login
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
