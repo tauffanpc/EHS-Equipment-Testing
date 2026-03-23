@@ -268,7 +268,7 @@ export const RegisterEquipmentPage: React.FC = () => {
               <div>
                 <Label optional>Masa Berlaku</Label>
                 <select className="input-field" value={form.validityPeriod} onChange={e => set('validityPeriod', e.target.value as ValidityPeriod)} disabled={!form.lastInspectionDate}>
-                  {VALIDITY.map(v => <option key={v} value={v}>{v}</option>)}
+                  {VALIDITY.map(val => <option key={val} value={val}>{val}</option>)}
                 </select>
               </div>
               {nextDate && (
@@ -313,4 +313,4 @@ export const RegisterEquipmentPage: React.FC = () => {
       </div>
     </Layout>
   );
-};v
+};
