@@ -36,7 +36,7 @@ export const InventoryPage: React.FC = () => {
 
   const filtered = useMemo(() => equipments.filter(e => {
     const s = getRiksaUjiStatus(e.nextInspectionDate);
-    return (!search || [e.equipmentNo, e.equipmentName, e.department, e.category].some(v => v?.toLowerCase().includes(search.toLowerCase())))
+    return (!search || [e.equipmentNo, e.equipmentName, e.department, e.category].some(field => field?.toLowerCase().includes(search.toLowerCase())))
       && (filterStatus === 'all' || s === filterStatus)
       && (filterCategory === 'all' || e.category === filterCategory)
       && (filterDept === 'all' || e.department === filterDept);
